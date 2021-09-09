@@ -1,0 +1,12 @@
+common:
+    app_key: '0IE_RmCgRsuLWpc0wwI6KA=='
+    secret_key: '2254de18440e6883087eaa0e9b76128c'
+    tronclass_api_host: 'https://open.nacta.edu.cn'
+    tronclass_api_url: '/broadcast/door_event'
+kafka:
+    bootstrap_servers: '127.0.0.1:9092'
+    group_id: 'door-lock-sync'
+    schema_registry_url: 'http://127.0.0.1:18081'
+    topics: 'roomis-door_lock_sync'
+    retry_seconds: 100
+    batch_size: 30

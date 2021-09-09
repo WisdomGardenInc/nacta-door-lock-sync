@@ -1,0 +1,14 @@
+apscheduler
+asn1crypto==0.24.0
+avro-python3==1.8.2
+certifi==2021.5.30
+chardet==4.0.0
+confluent-kafka==0.11.6
+fastavro==0.21.13
+idna==3.2
+Logbook==1.4.1
+pycparser==2.20
+PyYAML==3.13
+requests==2.26.0
+six==1.11.0
+urllib3==1.24.1
