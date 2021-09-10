@@ -1,8 +1,8 @@
 common:
-    app_key: '0IE_RmCgRsuLWpc0wwI6KA=='
-    secret_key: '2254de18440e6883087eaa0e9b76128c'
-    tronclass_api_host: 'https://open.nacta.edu.cn'
-    tronclass_api_url: '/broadcast/door_event'
+    authorization_header: 'Basic d3UxMGkxVS1xS2IwdVlWLXAwNWxabmpjbGhjcE1uV2c1ZHFROWZ4dHNjczpGLXpkQzlGRU45Sl8wVFJ2SmV1NS1yYnVBX1MxZ3pmbnNWMm9rRkJDRS1F'
+    nacta_api_host: 'https://open.nacta.edu.cn'
+    nacta_sync_url: '/broadcast/door_event'
+    nacta_auth_url: '/oauth/token'
 kafka:
     bootstrap_servers: '127.0.0.1:9092'
     group_id: 'door-lock-sync'

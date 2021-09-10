@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
-import hashlib
-import json
 import time
+import json
 from builtins import KeyboardInterrupt
 
 import requests
@@ -13,67 +12,66 @@ from config import cfg
 from logger import log
 
 s = requests.Session()
+token_info = {}
+auth_url = cfg['common']['nacta_api_host'] + cfg['common']['nacta_auth_url'] + \
+           '?grant_type=client_credentials&scope=door_event'
 
 
-def generate_token_from(url_without_token, secret_key):
-    str_content = (url_without_token + secret_key).encode()
-    digest = hashlib.md5(str_content).hexdigest()
-    return digest[:20]
+def get_token():
+    # 这里的授权头是base64(clientid:clientsecret)组成的
+    current_timestamp = int(time.time())
+    if 'access_token' in token_info.keys() and int(token_info.get('expired_time')) >= int(current_timestamp):
+        return token_info.get('access_token')
+    try:
+        s.headers = {
+            'Authorization': cfg['common']['authorization_header']
+        }
+        response = s.post(auth_url).content.decode()
+        token_result = json.loads(response)
+        token_info['access_token'] = token_result['token_type'] + ' ' + token_result['access_token']
+        token_info['expired_time'] = int(token_result['expires_in']) + current_timestamp - 100
+        return token_info.get('access_token')
+    except requests.RequestException as e:
+        log.error(e)
+        return ''
+    except requests.ConnectTimeout as e:
+        log.error(e)
+        return ''
 
 
 def send_to_nacta_platform(msgs):
     log.info('send_to_nacta_platform')
-    records = []
+    body = {}
     for msg in msgs:
-        periods = json.loads(msg.get('periods')).get('periods')
-        slot_period_start = periods[int(msg.get('slot_of_day')) - 1].get('start') if len(periods) >= int(
-            msg.get('slot_of_day')) else None
-        if msg.get('date') and msg.get('uid') and slot_period_start and msg.get('course_code') and msg.get(
-                'attendance_time') and msg.get("channel"):
-            records.append(
-                {
-                    'username': msg.get('user_name'),
-                    'timestamp': '{}T{}+08:00'.format(
-                        msg.get('access_at'),
-                        slot_period_start),
-                    'building': msg.get('building_name'),
-                    'room': msg.get('room_name'),
-                    'action': msg.get('access') == 'ALLOWED' if 'OPEN' else 'DENY',
-                    'direction': 'in',
-                    'evidence_type': msg.get("access_way"),
-                    'evidence_id': msg.get('card_no')
-                }
-            )
+        if msg.get('access_at') and msg.get('building_name') and msg.get('room_name') and msg.get('action'):
+            body = {
+                'username': msg.get('user_name'),
+                'timestamp': msg.get('access_at'),
+                'building': msg.get('building_name'),
+                'room': msg.get('room_name'),
+                'action': msg.get('access') == 'ALLOWED' if 'OPEN' else 'DENY',
+                'direction': 'in',
+                'evidence_type': msg.get("access_way"),
+                'evidence_id': msg.get('card_no')
+            }
         else:
             log.debug("remove invalid data, msg: {}".format(msg))
 
-    log.info(records)
-    log.info("deal msgs size is : {}".format(len(records)))
+        log.info(body)
 
-    if len(records) < len(msgs):
-        log.warning('Fields should not be NULL, please check vw_door_lock_record')
-    if len(records) == 0:
-        return True
+        target_url = '{}{}'.format(cfg['common']['nacta_api_host'], cfg['common']['nacta_sync_url'])
 
-    timestamp = int(time.time())
-    url_partial = '{}?app_key={}&ts={}'.format(cfg['common']['nacta_api_url'], cfg['common']['app_key'],
-                                               timestamp)
-    token = generate_token_from(url_partial, cfg['common']['secret_key'])
-    target_url = 'http://{}{}&token={}'.format(cfg['common']['nacta_api_host'], url_partial, token)
-
-    try:
-        response = s.post(target_url, json={'records': records}, timeout=30)
-    except requests.RequestException as e:
-        log.error(e)
-        return False
-    except requests.ConnectTimeout as e:
-        log.error(e)
-        return False
-    if response.status_code != 201:
-        log.error('{}, {}'.format(response.status_code, response.text))
-        return False
-    log.info('{}, {}'.format(response.status_code, response.json().get('message')))
-    return True
+        try:
+            token = get_token()
+            s.headers = {'Authorization': token}
+            response = s.post(target_url, json.dumps(body), timeout=30)
+        except requests.RequestException as e:
+            log.error(e)
+        except requests.ConnectTimeout as e:
+            log.error(e)
+        if response.status_code != 201:
+            log.error('{}, {}'.format(response.status_code, response.text))
+        log.info('{}, {}'.format(response.status_code, response.json().get('message')))
 
 
 consumer = AvroConsumer({
