@@ -56,6 +56,7 @@ def send_to_nacta_platform(msgs):
             }
         else:
             log.debug("remove invalid data, msg: {}".format(msg))
+            continue
 
         log.info(body)
 
